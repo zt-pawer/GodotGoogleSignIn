@@ -1,0 +1,433 @@
+name: Build and Release
+
+on:
+  push:
+    paths:
+      - 'apple/Sources/**'
+      - 'Generated/**'
+      - 'apple/Package.swift'
+      - 'apple/Package.resolved'
+      - 'Makefile'
+      - 'android/**'
+      - 'godot-cpp'
+      - '.gitmodules'
+      - '.github/workflows/build-and-release.yml'
+
+jobs:
+  build-stub-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch GDExtension headers
+        run: |
+          mkdir -p .tmp/gdextension
+          curl -fsSL \
+            https://raw.githubusercontent.com/migueldeicaza/SwiftGodot/2b0e39dc1c23454408f83c0a83ddf9c2516624c0/Sources/GDExtension/include/gdextension_interface.h \
+            -o .tmp/gdextension/gdextension_interface.h
+
+      - name: Build Linux x64 stubs
+        run: |
+          mkdir -p dist
+          for src in Generated/GodotGoogleSignIn*Stub/*_stub.c; do
+            case "$(basename "$src")" in ._*) continue ;; esac
+            base="$(basename "${src%.c}")"
+            cc -std=c11 -Wall -Wextra -shared -fPIC \
+              -I .tmp/gdextension "$src" \
+              -o "dist/${base}.linux.x86_64.so"
+          done
+
+      - name: Upload Linux x64 stubs
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-linux-x64
+          path: dist/*.so
+          if-no-files-found: error
+
+  build-stub-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch GDExtension headers
+        run: |
+          mkdir -p .tmp/gdextension
+          curl -fsSL \
+            https://raw.githubusercontent.com/migueldeicaza/SwiftGodot/2b0e39dc1c23454408f83c0a83ddf9c2516624c0/Sources/GDExtension/include/gdextension_interface.h \
+            -o .tmp/gdextension/gdextension_interface.h
+
+      - name: Build Linux ARM64 stubs
+        run: |
+          mkdir -p dist
+          for src in Generated/GodotGoogleSignIn*Stub/*_stub.c; do
+            case "$(basename "$src")" in ._*) continue ;; esac
+            base="$(basename "${src%.c}")"
+            cc -std=c11 -Wall -Wextra -shared -fPIC \
+              -I .tmp/gdextension "$src" \
+              -o "dist/${base}.linux.arm64.so"
+          done
+
+      - name: Upload Linux ARM64 stubs
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-linux-arm64
+          path: dist/*.so
+          if-no-files-found: error
+
+  build-stub-windows-x64:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch GDExtension headers
+        run: |
+          New-Item -ItemType Directory -Force -Path .tmp/gdextension | Out-Null
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/migueldeicaza/SwiftGodot/2b0e39dc1c23454408f83c0a83ddf9c2516624c0/Sources/GDExtension/include/gdextension_interface.h" `
+            -OutFile ".tmp/gdextension/gdextension_interface.h"
+
+      - name: Build Windows x64 stubs
+        shell: cmd
+        run: |
+          if not exist dist mkdir dist
+          set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+          for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find Common7\Tools\VsDevCmd.bat`) do set "VSDEVCMD=%%i"
+          if not defined VSDEVCMD exit /b 1
+          call "%VSDEVCMD%" -arch=x64
+          for /r Generated %%s in (*_stub.c) do (
+            echo %%~nxs | findstr /b /c:"._" >nul
+            if errorlevel 1 (
+              cl /std:c11 /W4 /LD /I .tmp\gdextension "%%s" /link /OUT:"dist\%%~ns.windows.x86_64.dll"
+              if errorlevel 1 exit /b 1
+            )
+          )
+
+      - name: Upload Windows x64 stubs
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-windows-x64
+          path: dist/*.dll
+          if-no-files-found: error
+
+  build-stub-windows-arm64:
+    runs-on: windows-11-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch GDExtension headers
+        run: |
+          New-Item -ItemType Directory -Force -Path .tmp/gdextension | Out-Null
+          Invoke-WebRequest `
+            -Uri "https://raw.githubusercontent.com/migueldeicaza/SwiftGodot/2b0e39dc1c23454408f83c0a83ddf9c2516624c0/Sources/GDExtension/include/gdextension_interface.h" `
+            -OutFile ".tmp/gdextension/gdextension_interface.h"
+
+      - name: Build Windows ARM64 stubs
+        shell: cmd
+        run: |
+          if not exist dist mkdir dist
+          set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+          for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.ARM64 -find Common7\Tools\VsDevCmd.bat`) do set "VSDEVCMD=%%i"
+          if not defined VSDEVCMD exit /b 1
+          call "%VSDEVCMD%" -arch=arm64 -host_arch=x64
+          for /r Generated %%s in (*_stub.c) do (
+            echo %%~nxs | findstr /b /c:"._" >nul
+            if errorlevel 1 (
+              cl /std:c11 /W4 /LD /I .tmp\gdextension "%%s" /link /OUT:"dist\%%~ns.windows.arm64.dll"
+              if errorlevel 1 exit /b 1
+            )
+          )
+
+      - name: Upload Windows ARM64 stubs
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-windows-arm64
+          path: dist/*.dll
+          if-no-files-found: error
+
+  build-android:
+    runs-on: ubuntu-latest
+    env:
+      NDK_VERSION: 28.0.12674087
+      CMAKE_VERSION: 3.31.1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install NDK + CMake
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;$NDK_VERSION" "cmake;$CMAKE_VERSION"
+
+      - name: Install scons
+        run: pip install "scons>=4.0"
+
+      - name: Build godot-cpp (Android arm64, debug + release)
+        run: |
+          set -euo pipefail
+          cd godot-cpp
+          for target in template_debug template_release; do
+            scons platform=android target="$target" arch=arm64 \
+              ndk_version="$NDK_VERSION" -j"$(nproc)"
+          done
+
+      - name: Build Android module
+        working-directory: android
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew assembleDebug assembleRelease --stacktrace
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-google-sign-in-android
+          path: |
+            android/build/outputs/aar/GodotGoogleSignIn-debug.aar
+            android/build/outputs/aar/GodotGoogleSignIn-release.aar
+            android/build/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/arm64-v8a/libGodotGoogleSignIn.so
+            android/build/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib/arm64-v8a/libGodotGoogleSignIn.so
+          if-no-files-found: error
+
+  package:
+    needs:
+      - build-stub-linux-x64
+      - build-stub-linux-arm64
+      - build-stub-windows-x64
+      - build-stub-windows-arm64
+      - build-android
+    runs-on:
+      - self-hosted
+      - macos
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    env:
+      GIT_CONFIG_NOSYSTEM: 1
+    steps:
+      - name: Prune stale keychain references
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGIN_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
+          KEEP=()
+          while IFS= read -r kc; do
+            kc="$(echo "${kc//\"/}" | xargs)"
+            [ -n "$kc" ] && [ -e "$kc" ] && KEEP+=("$kc")
+          done < <(security list-keychains -d user)
+          if [ "${#KEEP[@]}" -eq 0 ] && [ -e "$LOGIN_KEYCHAIN" ]; then
+            KEEP+=("$LOGIN_KEYCHAIN")
+          fi
+          if [ "${#KEEP[@]}" -gt 0 ]; then
+            security list-keychains -d user -s "${KEEP[@]}"
+            DEFAULT_KEYCHAIN="$(security default-keychain -d user 2>/dev/null | tr -d '"' | xargs || true)"
+            if [ -z "$DEFAULT_KEYCHAIN" ] || [ ! -e "$DEFAULT_KEYCHAIN" ]; then
+              security default-keychain -d user -s "${KEEP[0]}"
+            fi
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Import Code Signing Certificate
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          DEFAULT_KEYCHAIN_PATH=""
+          if security default-keychain -d user >/tmp/default-keychain-path 2>/dev/null; then
+            DEFAULT_KEYCHAIN_PATH=$(tr -d '"' </tmp/default-keychain-path)
+          fi
+          ORIGINAL_KEYCHAINS=""
+          while IFS= read -r kc; do
+            kc="$(echo "${kc//\"/}" | xargs)"
+            if [ -n "$kc" ] && [ -e "$kc" ]; then
+              ORIGINAL_KEYCHAINS="$ORIGINAL_KEYCHAINS $kc"
+            fi
+          done < <(security list-keychains -d user)
+          ORIGINAL_KEYCHAINS="${ORIGINAL_KEYCHAINS# }"
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $ORIGINAL_KEYCHAINS
+          printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          {
+            echo "KEYCHAIN_PATH=$KEYCHAIN_PATH"
+            echo "DEFAULT_KEYCHAIN_PATH=$DEFAULT_KEYCHAIN_PATH"
+            echo "ORIGINAL_KEYCHAINS=$ORIGINAL_KEYCHAINS"
+          } >> "$GITHUB_ENV"
+
+      - name: Build frameworks (iOS + macOS arm64)
+        env:
+          XCODEBUILD_LOG_ON_ERROR: 1
+          XCODEBUILD_LOG_DIR: ${{ runner.temp }}
+        run: |
+          caffeinate -dimsu make build \
+            DESTINATIONS="generic/platform=iOS generic/platform=iOS\ Simulator platform=macOS,arch=arm64"
+
+      - name: Build frameworks (macOS x86_64)
+        env:
+          XCODEBUILD_LOG_ON_ERROR: 1
+          XCODEBUILD_LOG_DIR: ${{ runner.temp }}
+        run: |
+          # Run xcodebuild natively (arm64) so Swift compiler plugins resolve correctly
+          # under Xcode 26 / Swift 6.2 where SwiftCompilerPlugin is a built-in host module
+          # and is not available when the toolchain runs as x86_64 via arch -x86_64.
+          # ARCHS/VALID_ARCHS cross-compile only the framework binary to x86_64.
+          caffeinate -dimsu make build \
+            DESTINATIONS="platform=macOS,arch=x86_64" \
+            XCODEBUILD_SETTINGS="CODE_SIGNING_ALLOWED=NO OTHER_LDFLAGS=-Wl,-headerpad_max_install_names ARCHS=x86_64 VALID_ARCHS=x86_64"
+
+      - name: Assemble addons
+        run: caffeinate -dimsu make dist
+
+      - name: Download Linux x64 stubs
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-linux-x64
+          path: ${{ runner.temp }}/stubs/linux-x64
+
+      - name: Download Linux ARM64 stubs
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-linux-arm64
+          path: ${{ runner.temp }}/stubs/linux-arm64
+
+      - name: Download Windows x64 stubs
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-windows-x64
+          path: ${{ runner.temp }}/stubs/windows-x64
+
+      - name: Download Windows ARM64 stubs
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-google-sign-in-stubs-windows-arm64
+          path: ${{ runner.temp }}/stubs/windows-arm64
+
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-google-sign-in-android
+          path: ${{ runner.temp }}/android
+
+      - name: Install stubs
+        run: |
+          set -euo pipefail
+          install_stub() {
+            local stub="$1"
+            local file base
+            file="$(basename "$stub")"
+            base="${file%%.*}"
+            case "$base" in
+              godot_google_sign_in_stub) ;;
+              *) echo "Unknown stub: $file" >&2; return 1 ;;
+            esac
+            cp "$stub" "addons/GodotGoogleSignIn/bin/$file"
+          }
+          find "$RUNNER_TEMP/stubs" -type f \( -name '*.so' -o -name '*.dll' \) -print0 |
+            while IFS= read -r -d '' stub; do install_stub "$stub"; done
+
+      - name: Install Android artifacts
+        run: |
+          set -euo pipefail
+          addon="addons/GodotGoogleSignIn/bin/android"
+          mkdir -p "$addon/debug/arm64-v8a" "$addon/release/arm64-v8a"
+          cp "$RUNNER_TEMP/android/outputs/aar/GodotGoogleSignIn-debug.aar" "$addon/debug/"
+          cp "$RUNNER_TEMP/android/outputs/aar/GodotGoogleSignIn-release.aar" "$addon/release/"
+          cp "$RUNNER_TEMP/android/intermediates/merged_native_libs/debug/mergeDebugNativeLibs/out/lib/arm64-v8a/libGodotGoogleSignIn.so" "$addon/debug/arm64-v8a/"
+          cp "$RUNNER_TEMP/android/intermediates/merged_native_libs/release/mergeReleaseNativeLibs/out/lib/arm64-v8a/libGodotGoogleSignIn.so" "$addon/release/arm64-v8a/"
+
+      - name: Sign macOS frameworks
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          SIGNING_IDENTITY=$(
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH" |
+            awk -F'"' '/Developer ID Application/ { print $2; exit }'
+          )
+          test -n "$SIGNING_IDENTITY"
+          find addons/GodotGoogleSignIn \
+            -path '*/bin/*.framework' -type d -print | sort | while read -r fw; do
+            codesign --keychain "$KEYCHAIN_PATH" --force --options runtime --timestamp \
+              --sign "$SIGNING_IDENTITY" "$fw"
+            codesign --keychain "$KEYCHAIN_PATH" --verify --strict --deep --verbose=2 "$fw"
+          done
+
+      - name: Archive addons
+        run: |
+          set -euo pipefail
+          PLUGIN_VERSION="$(grep -oE '^version="[^"]+"' addons/GodotGoogleSignIn/plugin.cfg | cut -d'"' -f2)"
+          test -n "$PLUGIN_VERSION"
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          PACKAGE_NAME="GodotGoogleSignIn-v${PLUGIN_VERSION}-${SHORT_SHA}.zip"
+          rm -rf dist && mkdir -p dist/addons
+          test -d "addons/GodotGoogleSignIn"
+          ditto "addons/GodotGoogleSignIn" "dist/addons/GodotGoogleSignIn"
+          ditto -c -k --sequesterRsrc --keepParent dist "$PACKAGE_NAME"
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> "$GITHUB_ENV"
+          echo "PLUGIN_VERSION=$PLUGIN_VERSION" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+
+      - name: Notarize
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "$PACKAGE_NAME" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.PLUGIN_VERSION }}-${{ env.SHORT_SHA }}
+          name: GodotGoogleSignIn v${{ env.PLUGIN_VERSION }} (${{ env.SHORT_SHA }})
+          body: Automated build from commit ${{ github.sha }}
+          files: ${{ env.PACKAGE_NAME }}
+
+      - name: Clean up signing keychain
+        if: always() && env.KEYCHAIN_PATH != ''
+        run: |
+          existing_keychains=()
+          for keychain in ${ORIGINAL_KEYCHAINS:-}; do
+            if [ -e "$keychain" ]; then existing_keychains+=("$keychain"); fi
+          done
+          if [ -n "${DEFAULT_KEYCHAIN_PATH:-}" ] && [ -e "$DEFAULT_KEYCHAIN_PATH" ]; then
+            security default-keychain -d user -s "$DEFAULT_KEYCHAIN_PATH" || true
+          elif [ "${#existing_keychains[@]}" -gt 0 ]; then
+            security default-keychain -d user -s "${existing_keychains[0]}" || true
+          fi
+          if [ "${#existing_keychains[@]}" -gt 0 ]; then
+            security list-keychains -d user -s "${existing_keychains[@]}" || true
+          fi
+          security delete-keychain "$KEYCHAIN_PATH" || true

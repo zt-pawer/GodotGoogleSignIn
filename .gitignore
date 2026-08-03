@@ -1,0 +1,40 @@
+# Swift Package Manager
+.build/
+.xcodebuild*/
+apple/*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+apple/.swiftpm/xcode/xcuserdata/
+apple/.swiftpm/xcode/package.xcworkspace/xcuserdata/
+
+# Build artifacts
+dist/
+.tmp/
+
+# macOS
+.DS_Store
+
+# Godot editor artifacts
+.godot/
+.import/
+
+# VSCode
+.vscode/
+
+# JetBrains IDEs (Android Studio)
+.idea/
+
+# Demo
+addons/GodotGoogleSignIn/bin/
+
+# Android
+android/.gradle/
+android/build/
+android/.cxx/
+android/local.properties
+
+# Others
+docs/
+.claude/
+
+# Binaries checked in to bin/ are intentional (xcframework, stubs).
+# Do not add addons/GodotGoogleSignIn/bin/ to this file.

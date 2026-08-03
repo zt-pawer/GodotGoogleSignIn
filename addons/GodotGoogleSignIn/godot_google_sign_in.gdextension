@@ -1,0 +1,20 @@
+[configuration]
+entry_symbol = "godot_google_sign_in_start"
+compatibility_minimum = 4.2
+android_aar_plugin = true
+
+[libraries]
+ios = "res://addons/GodotGoogleSignIn/bin/GodotGoogleSignIn.xcframework"
+linux.arm64 = "res://addons/GodotGoogleSignIn/bin/godot_google_sign_in_stub.linux.arm64.so"
+linux.x86_64 = "res://addons/GodotGoogleSignIn/bin/godot_google_sign_in_stub.linux.x86_64.so"
+macos.arm64 = "res://addons/GodotGoogleSignIn/bin/GodotGoogleSignIn.framework"
+macos.x86_64 = "res://addons/GodotGoogleSignIn/bin/GodotGoogleSignIn_x64.framework"
+windows.arm64 = "res://addons/GodotGoogleSignIn/bin/godot_google_sign_in_stub.windows.arm64.dll"
+windows.x86_64 = "res://addons/GodotGoogleSignIn/bin/godot_google_sign_in_stub.windows.x86_64.dll"
+android.debug.arm64 = "res://addons/GodotGoogleSignIn/bin/android/debug/arm64-v8a/libGodotGoogleSignIn.so"
+android.release.arm64 = "res://addons/GodotGoogleSignIn/bin/android/release/arm64-v8a/libGodotGoogleSignIn.so"
+
+[dependencies]
+ios = { "res://addons/GodotApplePluginsRuntime/bin/SwiftGodotRuntime.xcframework": "" }
+macos.arm64 = { "res://addons/GodotApplePluginsRuntime/bin/SwiftGodotRuntime.framework": "" }
+macos.x86_64 = { "res://addons/GodotApplePluginsRuntime/bin/SwiftGodotRuntime_x64.framework": "" }

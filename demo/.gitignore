@@ -1,0 +1,13 @@
+# Godot editor files
+.godot/
+
+# Export preset and output — contain personal team ID, bundle ID, built artifacts
+export_presets.cfg
+export/
+
+# Plugin binaries — install from the latest GitHub release
+addons/GodotGoogleSignIn/bin/
+addons/GodotApplePluginsRuntime/bin/
+
+# Android build template — installed via `godot --install-android-build-template`
+android/
