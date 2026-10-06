@@ -16,7 +16,7 @@ let linkerSettings: [LinkerSetting] = [
 
 let runtimeDependency: Target.Dependency = .product(
     name: "SwiftGodotRuntime",
-    package: "SwiftGodot"
+    package: "SwiftGodotBinary"
 )
 
 let package = Package(
@@ -26,7 +26,7 @@ let package = Package(
         .library(name: "GodotGoogleSignIn", type: .dynamic, targets: ["GodotGoogleSignIn"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftGodot", from: "0.79.0"),
+        .package(url: "https://github.com/migueldeicaza/SwiftGodotBinary", revision: "bf7cd9cb51b30039199c47811c486976923af93e"),
         .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "7.0.0"),
     ],
     targets: [

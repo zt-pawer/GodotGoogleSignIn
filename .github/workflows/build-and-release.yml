@@ -295,7 +295,7 @@ jobs:
           # ARCHS/VALID_ARCHS cross-compile only the framework binary to x86_64.
           caffeinate -dimsu make build \
             DESTINATIONS="platform=macOS,arch=x86_64" \
-            XCODEBUILD_SETTINGS="CODE_SIGNING_ALLOWED=NO OTHER_LDFLAGS=-Wl,-headerpad_max_install_names ARCHS=x86_64 VALID_ARCHS=x86_64"
+            XCODEBUILD_SETTINGS="CODE_SIGNING_ALLOWED=NO OTHER_LDFLAGS=\"-Xlinker -headerpad_max_install_names\" ARCHS=x86_64 VALID_ARCHS=x86_64"
 
       - name: Assemble addons
         run: caffeinate -dimsu make dist
