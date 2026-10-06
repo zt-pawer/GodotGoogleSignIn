@@ -110,7 +110,10 @@ dist:
 		products_dir="$$1"; \
 		dest_dir="$$2"; \
 		for bundle in "$$products_dir"/*.bundle; do \
-			if [ -d "$$bundle" ]; then rsync -a "$$bundle" "$$dest_dir/"; fi; \
+			if [ -d "$$bundle" ]; then \
+				rsync -a "$$bundle" "$$dest_dir/"; \
+				touch "$$dest_dir/$$(basename "$$bundle")/.gdignore"; \
+			fi; \
 		done; \
 	}; \
 	for module in $(MODULE_NAMES); do \
