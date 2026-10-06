@@ -16,6 +16,7 @@ XCODEBUILD_SETTINGS ?= CODE_SIGNING_ALLOWED=NO OTHER_LDFLAGS="-Xlinker -headerpa
 XCODEBUILD_LOG_ON_ERROR ?=
 XCODEBUILD_LOG_DIR ?=
 XCODEBUILD_HEARTBEAT_SECONDS ?= 60
+CODESIGN_IDENTITY ?= Apple Distribution: ZT Pawer LLC (X2Y33T5ZLR)
 
 ANDROID_NDK_VERSION ?= 28.0.12674087
 ANDROID_MODULE_NAME ?= GodotGoogleSignIn
@@ -127,6 +128,10 @@ dist:
 				-framework "$$ios_device" \
 				-framework "$$ios_sim" \
 				-output "$$addon/$${module}.xcframework"; \
+			for fw in "$$addon/$${module}.xcframework"/*/*.framework; do \
+				codesign --timestamp -f -s "$(CODESIGN_IDENTITY)" "$$fw"; \
+			done; \
+			codesign --timestamp -f -s "$(CODESIGN_IDENTITY)" "$$addon/$${module}.xcframework"; \
 		else \
 			echo "Missing iOS build products for $$module, skipping xcframework" >&2; \
 		fi; \
