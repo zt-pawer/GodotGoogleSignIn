@@ -105,13 +105,24 @@ dist:
 			install_name_tool -delete_rpath "$$old_rpath" "$$binary"; \
 		fi; \
 	}; \
+	copy_dependency_bundles() { \
+		products_dir="$$1"; \
+		dest_dir="$$2"; \
+		for bundle in "$$products_dir"/*.bundle; do \
+			if [ -d "$$bundle" ]; then rsync -a "$$bundle" "$$dest_dir/"; fi; \
+		done; \
+	}; \
 	for module in $(MODULE_NAMES); do \
 		addon="$(CURDIR)/addons/$$module/bin"; \
 		mkdir -p "$$addon"; \
 		rm -rf "$$addon/$${module}.xcframework" "$$addon/$${module}.framework" "$$addon/$${module}_x64.framework"; \
-		ios_device="$(DERIVED_DATA)/Build/Products/$(CONFIG)-iphoneos/PackageFrameworks/$${module}.framework"; \
-		ios_sim="$(DERIVED_DATA)simulator/Build/Products/$(CONFIG)-iphonesimulator/PackageFrameworks/$${module}.framework"; \
+		ios_device_root="$(DERIVED_DATA)/Build/Products/$(CONFIG)-iphoneos"; \
+		ios_sim_root="$(DERIVED_DATA)simulator/Build/Products/$(CONFIG)-iphonesimulator"; \
+		ios_device="$$ios_device_root/PackageFrameworks/$${module}.framework"; \
+		ios_sim="$$ios_sim_root/PackageFrameworks/$${module}.framework"; \
 		if [ -d "$$ios_device" ] && [ -d "$$ios_sim" ]; then \
+			copy_dependency_bundles "$$ios_device_root" "$$ios_device"; \
+			copy_dependency_bundles "$$ios_sim_root" "$$ios_sim"; \
 			$(XCODEBUILD) -create-xcframework \
 				-framework "$$ios_device" \
 				-framework "$$ios_sim" \
@@ -119,21 +130,27 @@ dist:
 		else \
 			echo "Missing iOS build products for $$module, skipping xcframework" >&2; \
 		fi; \
-		macos_arm64="$(DERIVED_DATA)arm64/Build/Products/$(CONFIG)/PackageFrameworks/$${module}.framework"; \
+		macos_arm64_root="$(DERIVED_DATA)arm64/Build/Products/$(CONFIG)"; \
+		macos_arm64="$$macos_arm64_root/PackageFrameworks/$${module}.framework"; \
 		if [ -d "$$macos_arm64" ]; then \
 			rsync -a "$$macos_arm64/" "$$addon/$${module}.framework"; \
+			mkdir -p "$$addon/$${module}.framework/Versions/A/Resources"; \
+			copy_dependency_bundles "$$macos_arm64_root" "$$addon/$${module}.framework/Versions/A/Resources"; \
 			binary="$$addon/$${module}.framework/Versions/A/$${module}"; \
 			if [ -f "$$binary" ]; then \
-				old_rpath="$(DERIVED_DATA)arm64/Build/Products/$(CONFIG)/PackageFrameworks"; \
+				old_rpath="$$macos_arm64_root/PackageFrameworks"; \
 				set_runtime_rpath "$$binary" "$$old_rpath"; \
 			fi; \
 		fi; \
-		macos_x64="$(DERIVED_DATA)x86_64/Build/Products/$(CONFIG)/PackageFrameworks/$${module}.framework"; \
+		macos_x64_root="$(DERIVED_DATA)x86_64/Build/Products/$(CONFIG)"; \
+		macos_x64="$$macos_x64_root/PackageFrameworks/$${module}.framework"; \
 		if [ -d "$$macos_x64" ]; then \
 			rsync -a "$$macos_x64/" "$$addon/$${module}_x64.framework"; \
+			mkdir -p "$$addon/$${module}_x64.framework/Versions/A/Resources"; \
+			copy_dependency_bundles "$$macos_x64_root" "$$addon/$${module}_x64.framework/Versions/A/Resources"; \
 			binary="$$addon/$${module}_x64.framework/Versions/A/$${module}"; \
 			if [ -f "$$binary" ]; then \
-				old_rpath="$(DERIVED_DATA)x86_64/Build/Products/$(CONFIG)/PackageFrameworks"; \
+				old_rpath="$$macos_x64_root/PackageFrameworks"; \
 				set_runtime_rpath "$$binary" "$$old_rpath"; \
 			fi; \
 		fi; \
